@@ -1,35 +1,29 @@
 import { Alert, Button, Label, Textarea, TextInput } from "flowbite-react";
-import { useState, FC, FormEvent } from "react";
+import { useState, FC, FormEvent, ChangeEvent } from "react";
 
-import { createNewPost } from "@/services";
+import { useMutatePosts } from "@/hooks";
 
-interface INewPostProps {}
+const NewPost: FC = () => {
+  const [formData, setFormData] = useState({ id: 10, title: "", body: "" });
 
-const NewPost: FC<INewPostProps> = () => {
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
+  const { mutate, reset, error, status } = useMutatePosts();
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState({ message: "" });
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    setIsLoading(true);
-    try {
-      await createNewPost({ id: 100, title, body });
-
-      setTitle("");
-      setBody("");
-    } catch (error: any) {
-      setError({ message: error.message });
-    }
-
-    setIsLoading(false);
+    mutate(formData, {
+      onSuccess: () => {
+        setFormData({ id: 9, title: "", body: "" });
+      },
+    });
   };
 
   return (
-    <section className="max-w-sm mx-auto">
+    <section className="px-4">
       <h2 className="text-center text-xl font-semibold">Create Post:</h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
@@ -38,31 +32,33 @@ const NewPost: FC<INewPostProps> = () => {
           </div>
           <TextInput
             id="title"
-            onChange={(e) => setTitle(e.target.value)}
+            name="title"
+            onChange={handleChange}
             placeholder="name@flowbite.com"
             required={true}
             type="text"
-            value={title}
+            value={formData.title}
           />
         </div>
 
         <div className="mb-2 block">
           <div className="mb-2 block">
-            <Label htmlFor="contenct" value="Your contenct" />
+            <Label htmlFor="body" value="Your comment" />
           </div>
 
           <Textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            id="comment"
+            id="body"
+            name="body"
+            onChange={handleChange}
             placeholder="Leave a comment..."
             required={true}
             rows={4}
+            value={formData.body}
           />
         </div>
 
-        <Button type="submit" disabled={isLoading || !title}>
-          {isLoading ? (
+        <Button type="submit" disabled={status === "loading" || !formData.title}>
+          {status === "loading" ? (
             <>
               <span className="spinner-border spinner-border-sm"></span> Submitting...
             </>
@@ -71,12 +67,15 @@ const NewPost: FC<INewPostProps> = () => {
           )}
         </Button>
 
-        {error && <Alert color="failure">Error fetching posts: {error.message}</Alert>}
+        <>
+          {error && <Alert color="failure">Error fetching posts: {(error as any).message}</Alert>}
 
-        {/* <div className="alert alert-success alert-dismissible" role="alert">
-          The post was saved successfuly
-          <button type="button" className="btn-close"></button>
-        </div> */}
+          {status === "success" && (
+            <Alert color="success" onDismiss={reset}>
+              Post created successfully!
+            </Alert>
+          )}
+        </>
       </form>
     </section>
   );
